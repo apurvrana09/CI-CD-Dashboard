@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true)
+  organizationId String?
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  deployments  Deployment[]
+  alertHistory AlertHistory[]
+
+  @@map("users")
+}
+
+model Organization {
+  id      String @id @default(cuid())
+  name    String
+  slug    String @unique
+  settings Json  @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users      User[]
+  pipelines  Pipeline[]
+  alerts     Alert[]
+
+  @@map("organizations")
+}
+
+model Pipeline {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  platform       Platform
+  repositoryUrl  String
+  repositoryId   String?
+  config         Json     @default("{}")
+  status         PipelineStatus @default(ACTIVE)
+  lastSyncAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  builds      Build[]
+  deployments Deployment[]
+  alertHistory AlertHistory[]
+
+  @@map("pipelines")
+}
+
+model Build {
+  id           String   @id @default(cuid())
+  pipelineId   String
+  pipeline     Pipeline @relation(fields: [pipelineId], references: [id])
+  externalId   String
+  status       BuildStatus
+  triggeredBy  String
+  branch       String?
+  commitHash   String?
+  commitMessage String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  duration     Int?
+  logsUrl      String?
+  artifacts    Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  deployments  Deployment[]
+  alertHistory AlertHistory[]
+
+  @@unique([pipelineId, externalId])
+  @@map("builds")
+}
+
+model Deployment {
+  id          String   @id @default(cuid())
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id])
+  buildId     String?
+  build       Build?   @relation(fields: [buildId], references: [id])
+  environment String
+  status      DeploymentStatus
+  deployedBy  String?
+  deployedByUser User? @relation(fields: [deployedBy], references: [id])
+  deployedAt  DateTime?
+  completedAt DateTime?
+  duration    Int?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("deployments")
+}
+
+model Alert {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  type           AlertType
+  conditions     Json
+  channels       Json
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  alertHistory AlertHistory[]
+
+  @@map("alerts")
+}
+
+model AlertHistory {
+  id         String   @id @default(cuid())
+  alertId    String
+  alert      Alert    @relation(fields: [alertId], references: [id])
+  pipelineId String?
+  pipeline   Pipeline? @relation(fields: [pipelineId], references: [id])
+  buildId    String?
+  build      Build?   @relation(fields: [buildId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  status     AlertStatus
+  message    String
+  sentAt     DateTime @default(now())
+
+  @@map("alert_history")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  USER
+  VIEWER
+}
+
+enum Platform {
+  GITHUB_ACTIONS
+  GITLAB_CI
+  JENKINS
+  AZURE_DEVOPS
+  CIRCLECI
+  TRAVIS_CI
+}
+
+enum PipelineStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum BuildStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILURE
+  CANCELLED
+  TIMEOUT
+}
+
+enum DeploymentStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILURE
+  ROLLBACK
+  CANCELLED
+}
+
+enum AlertType {
+  BUILD_FAILURE
+  DEPLOYMENT_FAILURE
+  PERFORMANCE_DEGRADATION
+  SECURITY_ISSUE
+  CUSTOM
+}
+
+enum AlertStatus {
+  TRIGGERED
+  SENT
+  FAILED
+  ACKNOWLEDGED
+} 
