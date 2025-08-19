@@ -42,6 +42,8 @@ model Organization {
   users      User[]
   pipelines  Pipeline[]
   alerts     Alert[]
+  jenkinsIntegrations JenkinsIntegration[]
+  githubIntegrations  GitHubIntegration[]
 
   @@map("organizations")
 }
@@ -147,6 +149,37 @@ model AlertHistory {
   sentAt     DateTime @default(now())
 
   @@map("alert_history")
+}
+
+model JenkinsIntegration {
+  id             String   @id @default(cuid())
+  name           String
+  baseUrl        String
+  username       String?
+  password       String?
+  active         Boolean  @default(false)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("jenkins_integrations")
+}
+
+model GitHubIntegration {
+  id             String   @id @default(cuid())
+  name           String
+  owner          String
+  repo           String
+  token          String   // stored encrypted/hashed at rest in future; for now plain
+  active         Boolean  @default(false)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([owner, repo])
+  @@map("github_integrations")
 }
 
 // Enums

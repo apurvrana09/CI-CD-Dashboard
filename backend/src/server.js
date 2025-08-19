@@ -12,6 +12,7 @@ const { logger } = require('./utils/logger');
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFound } = require('./middleware/notFound');
 const { setupSocketIO } = require('./services/socketService');
+const { startAlertScheduler } = require('./services/alertService');
 const { connectDatabase } = require('./database/connection');
 
 // Import routes
@@ -21,6 +22,11 @@ const buildRoutes = require('./routes/builds');
 const deploymentRoutes = require('./routes/deployments');
 const alertRoutes = require('./routes/alerts');
 const dashboardRoutes = require('./routes/dashboard');
+const jenkinsRoutes = require('./routes/jenkins');
+const jenkinsConfigsRoutes = require('./routes/jenkinsConfigs');
+const githubRoutes = require('./routes/github');
+const githubConfigsRoutes = require('./routes/githubConfigs');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const server = createServer(app);
@@ -33,10 +39,14 @@ const io = new Server(server, {
   }
 });
 
-// Rate limiting
+// Trust proxy (needed when running behind reverse proxies/tunnels so rate limiter can read X-Forwarded-For safely)
+app.set('trust proxy', 1);
+
+// Rate limiting (optional; enable by setting ENABLE_RATE_LIMIT=true)
+const enableRateLimit = process.env.ENABLE_RATE_LIMIT === 'true';
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 100, // default production threshold; can be tuned via env if needed
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -50,7 +60,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-app.use('/api', limiter);
+if (enableRateLimit) {
+  app.use('/api', limiter);
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -69,6 +81,11 @@ app.use('/api/v1/builds', buildRoutes);
 app.use('/api/v1/deployments', deploymentRoutes);
 app.use('/api/v1/alerts', alertRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/integrations/jenkins', jenkinsRoutes);
+app.use('/api/v1/integrations/jenkins-configs', jenkinsConfigsRoutes);
+app.use('/api/v1/integrations/github', githubRoutes);
+app.use('/api/v1/integrations/github-configs', githubConfigsRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 
 // Swagger documentation
 if (process.env.NODE_ENV !== 'production') {
@@ -114,6 +131,12 @@ server.listen(PORT, () => {
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   if (process.env.NODE_ENV !== 'production') {
     logger.info(`API Documentation: http://localhost:${PORT}/api-docs`);
+  }
+  // Start alerts scheduler unless explicitly disabled
+  if ((process.env.ALERTS_ENABLED || 'true') !== 'false') {
+    startAlertScheduler();
+  } else {
+    logger.info('Alerts scheduler disabled by ALERTS_ENABLED=false');
   }
 });
 

@@ -4,9 +4,9 @@ import { Box } from '@mui/material';
 
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Pipelines from './pages/Pipelines';
-import Builds from './pages/Builds';
 import Deployments from './pages/Deployments';
 import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
@@ -32,6 +32,7 @@ function App() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -44,8 +45,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/pipelines" element={<Pipelines />} />
         <Route path="/pipelines/:id" element={<Pipelines />} />
-        <Route path="/builds" element={<Builds />} />
-        <Route path="/builds/:id" element={<Builds />} />
+        {/* Back-compat: redirect Builds to Pipelines */}
+        <Route path="/builds" element={<Navigate to="/pipelines" replace />} />
+        <Route path="/builds/:id" element={<Navigate to="/pipelines/:id" replace />} />
         <Route path="/deployments" element={<Deployments />} />
         <Route path="/deployments/:id" element={<Deployments />} />
         <Route path="/alerts" element={<Alerts />} />

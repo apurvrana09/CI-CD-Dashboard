@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    # Reuse the built image but override command and mount source for dev
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cicd_dashboard?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: supersecretjwt
+      FRONTEND_URL: http://localhost:3000
+      JWT_EXPIRES_IN: 30d
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: your-email@gmail.com
+      SMTP_PASS: your-app-password
+      SLACK_WEBHOOK_URL: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+      GITHUB_CLIENT_ID: your-github-client-id
+      GITHUB_CLIENT_SECRET: your-github-client-secret
+      GITLAB_CLIENT_ID: your-gitlab-client-id
+      GITLAB_CLIENT_SECRET: your-gitlab-client-secret
+      LOG_LEVEL: debug
+
+  frontend:
+    # Swap to Node image for Vite dev server with HMR
+    image: node:18-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      VITE_API_URL: http://localhost:5000/api/v1
+      VITE_WS_URL: ws://localhost:5000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - cicd-network

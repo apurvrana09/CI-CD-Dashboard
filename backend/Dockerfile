@@ -13,6 +13,9 @@ RUN npm install --only=production
 # Copy source code
 COPY . .
 
+# Install system dependencies required by Prisma engines (OpenSSL, libc compatibility)
+RUN apk add --no-cache openssl libc6-compat
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -34,5 +37,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js
 
-# Start the application
-CMD ["npm", "start"] 
+# Start the application (ensure database schema is up to date in production)
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
