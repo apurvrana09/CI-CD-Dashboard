@@ -10,7 +10,6 @@
     "test:watch": "jest --watch",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:seed": "node src/database/seed.js",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
@@ -57,4 +56,5 @@
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   }
-} 
+}
+ 

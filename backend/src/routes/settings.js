@@ -3,26 +3,24 @@ const router = express.Router();
 const { prisma } = require('../database/connection');
 const { logger } = require('../utils/logger');
 
-// Helpers to resolve a single-tenant organization row
-async function getOrCreateDefaultOrg() {
-  // Try default slug
+// Helper to resolve a single-tenant organization row without auto-creating
+async function getDefaultOrg() {
+  // Prefer default slug if it exists
   let org = await prisma.organization.findFirst({ where: { slug: 'default' } });
   if (org) return org;
-  // Try first existing org
-  org = await prisma.organization.findFirst();
-  if (org) return org;
-  // Create default org if none exists
-  return prisma.organization.create({ data: { name: 'Default Org', slug: 'default', settings: {} } });
+  // Fallback to any existing org
+  return prisma.organization.findFirst();
 }
 
 // GET global dashboard settings
 router.get('/dashboard', async (req, res) => {
   try {
-    const org = await getOrCreateDefaultOrg();
-    const settings = org.settings || {};
+    const org = await getDefaultOrg();
+    // Do not auto-create org on GET; return empty defaults if none exists
+    const settings = org?.settings || {};
     const payload = {
       selectedIntegrations: settings.selectedIntegrations || [], // e.g. ["jenkins:<id>", "github:<id>"]
-      updatedAt: org.updatedAt,
+      updatedAt: org?.updatedAt || null,
     };
     res.json({ success: true, data: payload });
   } catch (error) {
@@ -38,7 +36,11 @@ router.put('/dashboard', async (req, res) => {
     if (!Array.isArray(selectedIntegrations)) {
       return res.status(400).json({ success: false, error: 'selectedIntegrations must be an array of strings' });
     }
-    const org = await getOrCreateDefaultOrg();
+    let org = await getDefaultOrg();
+    // Create org only on explicit update (user action), not on reads
+    if (!org) {
+      org = await prisma.organization.create({ data: { name: 'Default Org', slug: 'default', settings: {} } });
+    }
     const newSettings = { ...(org.settings || {}), selectedIntegrations };
     const updated = await prisma.organization.update({
       where: { id: org.id },

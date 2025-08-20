@@ -20,10 +20,11 @@ async function resolveOrgId(req) {
     // Try any existing org
     org = await prisma.organization.findFirst();
   }
-  if (!org) {
+  // Only create an org on explicit modifying requests, not on GET reads
+  if (!org && req.method !== 'GET') {
     org = await prisma.organization.create({ data: { name: 'Default Org', slug: 'default', settings: {} } });
   }
-  return org.id;
+  return org?.id;
 }
 
 /**
@@ -61,6 +62,19 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const orgId = await resolveOrgId(req);
+    // If no organization exists yet, return empty dataset without creating one
+    if (!orgId) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0
+        }
+      });
+    }
     const where = { organizationId: orgId };
 
     if (type) {

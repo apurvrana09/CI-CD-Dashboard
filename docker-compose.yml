@@ -50,7 +50,6 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - JWT_SECRET=${JWT_SECRET:-change-me}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-30d}
       # SMTP (use app password for Gmail)
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -59,10 +58,6 @@ services:
       - SMTP_FROM=${SMTP_FROM:-CI/CD Alerts <alerts@example.com>}
       - ALERTS_ENABLED=${ALERTS_ENABLED:-false}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
-      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID:-}
-      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET:-}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
       - "5000:5000"
