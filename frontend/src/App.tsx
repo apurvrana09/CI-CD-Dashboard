@@ -14,6 +14,7 @@ import { useAuth } from './hooks/useAuth';
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth()
+  const enableAlerts = (import.meta as any).env?.VITE_ENABLE_ALERTS === 'true'
 
   if (isLoading) {
     return (
@@ -50,7 +51,7 @@ function App() {
         <Route path="/builds/:id" element={<Navigate to="/pipelines/:id" replace />} />
         <Route path="/deployments" element={<Deployments />} />
         <Route path="/deployments/:id" element={<Deployments />} />
-        <Route path="/alerts" element={<Alerts />} />
+        {enableAlerts && <Route path="/alerts" element={<Alerts />} />}
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
@@ -58,4 +59,4 @@ function App() {
   )
 }
 
-export default App 
+export default App

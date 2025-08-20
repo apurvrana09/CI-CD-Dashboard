@@ -11,6 +11,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const enableAlerts = (import.meta as any).env?.VITE_ENABLE_ALERTS === 'true'
 
   const handleLogout = () => {
     dispatch(logout());
@@ -27,7 +28,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Button color="inherit" onClick={() => navigate('/dashboard')}>Dashboard</Button>
             <Button color="inherit" onClick={() => navigate('/pipelines')}>Pipelines</Button>
             <Button color="inherit" onClick={() => navigate('/deployments')}>Deployments</Button>
-            <Button color="inherit" onClick={() => navigate('/alerts')}>Alerts</Button>
+            {enableAlerts && (
+              <Button color="inherit" onClick={() => navigate('/alerts')}>Alerts</Button>
+            )}
             <Button color="inherit" onClick={() => navigate('/settings')}>Settings</Button>
           </Box>
           <Button color="inherit" onClick={handleLogout}>Logout</Button>

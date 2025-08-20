@@ -300,7 +300,7 @@ router.put('/:id', [
   body('conditions').optional().isObject(),
   body('channels').optional().isObject(),
   body('isActive').optional().isBoolean()
-], authorize('ADMIN', 'USER'), async (req, res) => {
+], authorize('ADMIN', 'USER', 'VIEWER'), async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -374,7 +374,7 @@ router.put('/:id', [
  *       200:
  *         description: Alert deleted successfully
  */
-router.delete('/:id', authorize('ADMIN'), async (req, res) => {
+router.delete('/:id', authorize('ADMIN', 'USER', 'VIEWER'), async (req, res) => {
   try {
     const { id } = req.params;
     const orgId = await resolveOrgId(req);
@@ -392,6 +392,11 @@ router.delete('/:id', authorize('ADMIN'), async (req, res) => {
         error: 'Alert not found'
       });
     }
+
+    // First remove related history entries to satisfy FK constraints
+    await prisma.alertHistory.deleteMany({
+      where: { alertId: id }
+    });
 
     await prisma.alert.delete({
       where: { id }

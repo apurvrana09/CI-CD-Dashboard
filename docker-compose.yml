@@ -53,7 +53,13 @@ services:
       - JWT_SECRET=supersecretjwt
       - FRONTEND_URL=http://localhost:3000
       - JWT_EXPIRES_IN=30d
-      - ALERTS_ENABLED=false
+      # Gmail SMTP (App Password)
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=apurvrana009@gmail.com
+      - SMTP_PASS=gtchajyxpxoiijcu
+      - SMTP_FROM=CI/CD Alerts <apurvrana009@gmail.com>
+      - ALERTS_ENABLED=true
       - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
       - GITHUB_CLIENT_ID=your-github-client-id
       - GITHUB_CLIENT_SECRET=your-github-client-secret
@@ -86,10 +92,12 @@ services:
       args:
         VITE_API_URL: "http://localhost:5000/api/v1"
         VITE_WS_URL: "ws://localhost:5000"
+        VITE_ENABLE_ALERTS: "true"
     container_name: cicd-dashboard-frontend
     environment:
       VITE_API_URL: http://localhost:5000/api/v1
       VITE_WS_URL: ws://localhost:5000
+      VITE_ENABLE_ALERTS: "true"
     ports:
       - "3000:3000"
     depends_on:

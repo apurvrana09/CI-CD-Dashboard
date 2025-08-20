@@ -15,8 +15,10 @@ COPY . .
 # Accept Vite environment at build time
 ARG VITE_API_URL
 ARG VITE_WS_URL
+ARG VITE_ENABLE_ALERTS
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
+ENV VITE_ENABLE_ALERTS=${VITE_ENABLE_ALERTS}
 
 # Build the application
 RUN npm run build

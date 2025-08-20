@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASE="http://localhost:5000/api/v1"
-EMAIL="dev@local.test"
+EMAIL="apurvrana09@gmail.com"
 PASS="Passw0rd!"
 
 log() { printf "\n[%s] %s\n" "$(date +"%H:%M:%S")" "$*"; }

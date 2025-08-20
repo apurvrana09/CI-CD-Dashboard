@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   backend:
+    image: node:18-alpine
+    working_dir: /app
     # Reuse the built image but override command and mount source for dev
     command: sh -c "npm install && npm run dev"
     volumes:
@@ -15,16 +17,18 @@ services:
       JWT_SECRET: supersecretjwt
       FRONTEND_URL: http://localhost:3000
       JWT_EXPIRES_IN: 30d
-      SMTP_HOST: smtp.gmail.com
-      SMTP_PORT: 587
-      SMTP_USER: your-email@gmail.com
-      SMTP_PASS: your-app-password
+      # Disable alerts by default in dev to avoid sending emails
+      ALERTS_ENABLED: "false"
       SLACK_WEBHOOK_URL: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
       GITHUB_CLIENT_ID: your-github-client-id
       GITHUB_CLIENT_SECRET: your-github-client-secret
       GITLAB_CLIENT_ID: your-gitlab-client-id
       GITLAB_CLIENT_SECRET: your-gitlab-client-secret
       LOG_LEVEL: debug
+    ports:
+      - "5000:5000"
+    networks:
+      - cicd-network
 
   frontend:
     # Swap to Node image for Vite dev server with HMR
@@ -34,6 +38,7 @@ services:
     environment:
       VITE_API_URL: http://localhost:5000/api/v1
       VITE_WS_URL: ws://localhost:5000
+      VITE_ENABLE_ALERTS: "true"
     ports:
       - "3000:3000"
     volumes:
@@ -43,3 +48,9 @@ services:
       - backend
     networks:
       - cicd-network
+
+  # Mailpit removed: using dev stack without a local SMTP sink
+
+networks:
+  cicd-network:
+    driver: bridge
