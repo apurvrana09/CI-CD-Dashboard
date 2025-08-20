@@ -5,7 +5,7 @@ A comprehensive dashboard for monitoring and managing Continuous Integration and
 ## 🚀 Features
 
 - **Real-time Pipeline Monitoring**: Live status tracking of CI/CD pipelines
-- **Multi-Platform Support**: GitHub Actions, GitLab CI, Jenkins, Azure DevOps
+- **Multi-Platform Support**: Implemented — GitHub Actions, Jenkins; Roadmap — GitLab CI, Azure DevOps
 - **Build & Deployment Tracking**: Comprehensive build and deployment history
 - **Alerting System**: Configurable alerts with multi-channel notifications
 - **Performance Analytics**: Detailed metrics and trend analysis
@@ -36,7 +36,7 @@ A comprehensive dashboard for monitoring and managing Continuous Integration and
 - **Framework**: Express.js
 - **Database**: PostgreSQL 15 with Prisma ORM
 - **Cache**: Redis 7
-- **Authentication**: JWT with Passport.js
+- **Authentication**: JWT (custom middleware)
 - **Real-time**: Socket.io
 - **Documentation**: Swagger/OpenAPI
 
@@ -122,6 +122,9 @@ A comprehensive dashboard for monitoring and managing Continuous Integration and
 NODE_ENV=development
 PORT=5000
 FRONTEND_URL=http://localhost:3000
+ENABLE_SWAGGER=false          # enable docs locally by setting true
+ENABLE_RATE_LIMIT=false       # enable global rate limiting on /api when true
+ALERTS_ENABLED=true           # disable alert scheduler by setting false
 
 # Database Configuration
 DATABASE_URL="postgresql://username:password@localhost:5432/cicd_dashboard"
@@ -165,7 +168,11 @@ VITE_WS_URL=ws://localhost:5000
 
 ## 📚 API Documentation
 
-The API documentation is available at `http://localhost:5000/api-docs` when running in development mode.
+The API documentation is available at `http://localhost:5000/api-docs` when `ENABLE_SWAGGER=true` or when not running in production (`NODE_ENV !== 'production'`).
+
+Production guidance:
+- Set `ENABLE_SWAGGER=false` (default) in production.
+- Keep API docs disabled unless explicitly required for troubleshooting.
 
 ### Key Endpoints
 
@@ -380,6 +387,36 @@ For support and questions:
 - [ ] Performance optimization
 - [ ] Integration with monitoring tools (Prometheus, Grafana)
 
+## ⚙️ First-Run Automation (v3)
+
+The backend automates database setup on container startup via `backend/entrypoint.sh`:
+
+- Prisma migrations: `prisma migrate deploy` (with retry)
+- Schema sync: `prisma db push` (post-deploy drift catch)
+- Prisma client: `prisma generate`
+- Seed (idempotent): runs `backend/src/scripts/seed.js` when `SEED_ON_START=true`
+
+Environment variables in `docker-compose.yml` control seeding and defaults:
+
+- `ADMIN_EMAIL` (e.g., `admin@example.com`)
+- `ADMIN_PASSWORD` (e.g., `ChangeMe123!`)
+- `SEED_ON_START=true` to enable seeding on boot
+- `SEED_SAMPLES=true` to include demo pipeline/build/deployment/alert data
+- `FRONTEND_URL=http://localhost:3000`
+- `ENABLE_SWAGGER=true` to expose Swagger UI at `/api-docs` in local setups
+  - Recommended to leave disabled in production (`ENABLE_SWAGGER=false`).
+
+Quick start (Docker Compose):
+
+- Bring up: `docker compose up -d`
+- Frontend: http://localhost:3000
+- API base: http://localhost:5000/api/v1
+
+Notes:
+
+- Seeding is safe to run multiple times (upserts). For production, disable after first boot by setting `SEED_ON_START=false`.
+- Admin credentials are configurable via env; change defaults immediately.
+
 ---
 
-**Built with ❤️ using AI-assisted development** 
+**Built with ❤️ using AI-assisted development**

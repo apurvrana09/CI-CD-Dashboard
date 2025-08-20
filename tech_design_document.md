@@ -31,11 +31,11 @@ The CI/CD Dashboard follows a microservices architecture with the following comp
 
 #### 2. Backend Layer
 - **Technology**: Node.js with Express.js
-- **Authentication**: JWT with Passport.js
+- **Authentication**: JWT (custom middleware)
 - **API Documentation**: Swagger/OpenAPI
-- **Validation**: Joi for request validation
-- **Rate Limiting**: Express-rate-limit
-- **CORS**: Express-cors
+- **Validation**: express-validator
+- **Rate Limiting**: express-rate-limit (toggled by `ENABLE_RATE_LIMIT`)
+- **CORS**: Configured allowlist with localhost support and `FRONTEND_URL`
 
 #### 3. Data Layer
 - **Primary Database**: PostgreSQL 15
@@ -44,15 +44,20 @@ The CI/CD Dashboard follows a microservices architecture with the following comp
 - **Migrations**: Prisma Migrate
 
 #### 4. External Integrations
-- **CI/CD Platforms**: GitHub Actions, GitLab CI, Jenkins
-- **Notifications**: Slack, Email, Teams
-- **Monitoring**: Prometheus, Grafana
+- **CI/CD Platforms**: GitHub Actions, Jenkins (implemented); GitLab CI/Azure DevOps (roadmap)
+- **Notifications**: Slack (Webhook) and Email (SMTP) implemented; Teams/SMS (roadmap)
+- **Monitoring**: Prometheus/Grafana (roadmap)
 
 ## API Structure
 
 ### Base URL
+Local development:
 ```
-https://api.cicd-dashboard.com/v1
+http://localhost:5000/api/v1
+```
+Production (example behind reverse proxy):
+```
+https://api.example.com/api/v1
 ```
 
 ### Authentication Endpoints
@@ -79,17 +84,23 @@ GET    /pipelines/:id/metrics       # Get pipeline metrics
 ```
 GET    /builds                      # List all builds
 GET    /builds/:id                  # Get build details
-POST   /builds/:id/retry           # Retry failed build
-GET    /builds/:id/logs             # Get build logs
 GET    /builds/metrics              # Get build metrics
+```
+Planned (not yet implemented):
+```
+POST   /builds/:id/retry            # Retry failed build
+GET    /builds/:id/logs             # Get build logs
 ```
 
 ### Deployment Management
 ```
 GET    /deployments                 # List all deployments
 GET    /deployments/:id             # Get deployment details
-POST   /deployments/:id/rollback    # Rollback deployment
 GET    /deployments/metrics         # Get deployment metrics
+```
+Planned (not yet implemented):
+```
+POST   /deployments/:id/rollback    # Rollback deployment
 ```
 
 ### Alerting System
@@ -104,11 +115,14 @@ POST    /alerts/test                # Test alert configuration
 
 ### Dashboard Widgets
 ```
+GET    /dashboard/data              # Get dashboard data (implemented)
+```
+Planned (not yet implemented):
+```
 GET    /dashboard/widgets           # Get dashboard widgets
-POST    /dashboard/widgets          # Create new widget
+POST   /dashboard/widgets           # Create new widget
 PUT    /dashboard/widgets/:id       # Update widget
 DELETE /dashboard/widgets/:id       # Delete widget
-GET    /dashboard/data              # Get dashboard data
 ```
 
 ### Sample API Responses
@@ -286,6 +300,7 @@ CREATE TABLE alert_history (
   alert_id UUID REFERENCES alerts(id),
   pipeline_id UUID REFERENCES pipelines(id),
   build_id UUID REFERENCES builds(id),
+  user_id UUID REFERENCES users(id),
   status VARCHAR(50) NOT NULL,
   message TEXT,
   sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -430,5 +445,42 @@ CREATE INDEX idx_alert_history_sent_at ON alert_history(sent_at);
   - Caption: 0.875rem
 
 ---
+
+## Implementation Notes (v3)
+
+Added in v3 to capture runtime and deployment specifics.
+
+- Runtime endpoints
+  - Backend API base (local): `http://localhost:5000/api/v1`
+  - Swagger UI: `http://localhost:5000/api-docs`
+- Docker Compose startup
+  - Backend entrypoint automates: migrations → db push (drift catch) → prisma generate → idempotent seed
+- Seeding controls
+  - `SEED_ON_START` (default true) and `SEED_SAMPLES` for demo data
+- CORS configuration
+  - Allow `FRONTEND_URL` and localhost/127.0.0.1 with dynamic ports
+- Alerts
+  - Toggle scheduler via `ALERTS_ENABLED` (set false to disable)
+- Security
+  - Rotate `JWT_SECRET`, change default admin password, disable seeding in production
+- API docs flag
+  - `ENABLE_SWAGGER=true` to expose Swagger UI locally; keep false in production
+- Rate limiting
+  - Enable request rate limiting with `ENABLE_RATE_LIMIT=true`
+  - Idempotent seed: `backend/src/scripts/seed.js`
+
+### Seeding Controls (env)
+- `SEED_ON_START=true` enables seed on boot
+- `SEED_SAMPLES=true` adds demo pipeline/build/deployment/alert data
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD` configure initial admin
+
+### CORS & Realtime
+- `FRONTEND_URL` plus localhost/127.0.0.1 origins allowed in `backend/src/server.js`
+- Socket.IO CORS mirrors HTTP CORS
+
+### Security Recommendations
+- Rotate `JWT_SECRET`
+- Change seeded admin password after first login
+- Disable `SEED_ON_START` in production
 
 *This technical design document provides the foundation for implementing the CI/CD Dashboard with modern web technologies and best practices.* 
