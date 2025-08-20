@@ -9,8 +9,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Mount a directory of init scripts into Postgres init directory
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/
     ports:
       - "5432:5432"
     networks:
@@ -50,6 +48,10 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - JWT_SECRET=${JWT_SECRET:-change-me}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      # First-run seeding
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-ChangeMe123!}
+      - SEED_ON_START=${SEED_ON_START:-true}
       # SMTP (use app password for Gmail)
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -94,7 +96,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - cicd-network
 

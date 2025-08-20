@@ -40,5 +40,9 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js
 
-# Start the application (ensure database schema is up to date in production)
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+# Copy and use entrypoint that waits for DB, applies migrations, then starts app
+COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Start via entrypoint
+CMD ["/app/entrypoint.sh"]

@@ -31,11 +31,30 @@ const settingsRoutes = require('./routes/settings');
 const app = express();
 const server = createServer(app);
 
+// Build CORS allowlist
+const defaultFrontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowlist = new Set([
+  defaultFrontend,
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+]);
+// Helper to check if origin is allowed (allow any 127.0.0.1:<port> for local previews)
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // non-browser clients
+  if (allowlist.has(origin)) return true;
+  if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return true;
+  return false;
+}
+
 // Socket.IO setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ["GET", "POST"],
+    credentials: true,
   }
 });
 
@@ -54,8 +73,11 @@ const limiter = rateLimit({
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
