@@ -4,19 +4,20 @@ FROM node:18-bullseye
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and Prisma schema early so postinstall can find schema
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install --only=production
-
-# Copy source code
-COPY . .
+COPY prisma ./prisma
 
 # Install system dependencies required by Prisma engines (OpenSSL)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies (omit dev deps for production)
+RUN npm install --only=production
+
+# Copy source code
+COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
