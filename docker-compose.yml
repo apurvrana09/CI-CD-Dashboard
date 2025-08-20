@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: cicd-dashboard-postgres
     environment:
-      POSTGRES_DB: cicd_dashboard
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-cicd_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Mount a directory of init scripts into Postgres init directory
@@ -46,26 +44,26 @@ services:
       dockerfile: Dockerfile
     container_name: cicd-dashboard-backend
     environment:
-      - NODE_ENV=production
-      - PORT=5000
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cicd_dashboard?schema=public
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=supersecretjwt
-      - FRONTEND_URL=http://localhost:3000
-      - JWT_EXPIRES_IN=30d
-      # Gmail SMTP (App Password)
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_USER=apurvrana009@gmail.com
-      - SMTP_PASS=gtchajyxpxoiijcu
-      - SMTP_FROM=CI/CD Alerts <apurvrana009@gmail.com>
-      - ALERTS_ENABLED=true
-      - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-      - GITHUB_CLIENT_ID=your-github-client-id
-      - GITHUB_CLIENT_SECRET=your-github-client-secret
-      - GITLAB_CLIENT_ID=your-gitlab-client-id
-      - GITLAB_CLIENT_SECRET=your-gitlab-client-secret
-      - LOG_LEVEL=info
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cicd_dashboard}?schema=public}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-30d}
+      # SMTP (use app password for Gmail)
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-CI/CD Alerts <alerts@example.com>}
+      - ALERTS_ENABLED=${ALERTS_ENABLED:-false}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID:-}
+      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
       - "5000:5000"
     depends_on:
@@ -90,14 +88,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: "http://localhost:5000/api/v1"
-        VITE_WS_URL: "ws://localhost:5000"
-        VITE_ENABLE_ALERTS: "true"
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:5000}
+        VITE_ENABLE_ALERTS: ${VITE_ENABLE_ALERTS:-true}
     container_name: cicd-dashboard-frontend
     environment:
-      VITE_API_URL: http://localhost:5000/api/v1
-      VITE_WS_URL: ws://localhost:5000
-      VITE_ENABLE_ALERTS: "true"
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:5000}
+      VITE_ENABLE_ALERTS: ${VITE_ENABLE_ALERTS:-true}
     ports:
       - "3000:3000"
     depends_on:

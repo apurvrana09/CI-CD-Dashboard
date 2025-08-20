@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
+# Use Node.js 18 Debian (bullseye) as base image for Prisma OpenSSL compatibility
+FROM node:18-bullseye
 
 # Set working directory
 WORKDIR /app
@@ -13,8 +13,10 @@ RUN npm install --only=production
 # Copy source code
 COPY . .
 
-# Install system dependencies required by Prisma engines (OpenSSL, libc compatibility)
-RUN apk add --no-cache openssl libc6-compat
+# Install system dependencies required by Prisma engines (OpenSSL)
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Generate Prisma client
 RUN npx prisma generate
