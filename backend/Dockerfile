@@ -1,13 +1,19 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
+# Use Node.js 18 Debian (bullseye) as base image for Prisma OpenSSL compatibility
+FROM node:18-bullseye
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and Prisma schema early so postinstall can find schema
 COPY package*.json ./
+COPY prisma ./prisma
 
-# Install dependencies
+# Install system dependencies required by Prisma engines (OpenSSL)
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies (omit dev deps for production)
 RUN npm install --only=production
 
 # Copy source code
@@ -19,9 +25,9 @@ RUN npx prisma generate
 # Create logs directory
 RUN mkdir -p logs
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+# Create non-root user (Debian)
+RUN groupadd -g 1001 nodejs \
+  && useradd -m -u 1001 -g 1001 -s /bin/bash nodejs
 
 # Change ownership of the app directory
 RUN chown -R nodejs:nodejs /app
@@ -34,5 +40,9 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node healthcheck.js
 
-# Start the application
-CMD ["npm", "start"] 
+# Copy and use entrypoint that waits for DB, applies migrations, then starts app
+COPY --chown=nodejs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Start via entrypoint
+CMD ["/app/entrypoint.sh"]

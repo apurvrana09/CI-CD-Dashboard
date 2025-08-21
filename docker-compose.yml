@@ -1,17 +1,14 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: cicd-dashboard-postgres
     environment:
-      POSTGRES_DB: cicd_dashboard
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-cicd_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:
@@ -45,40 +42,62 @@ services:
       dockerfile: Dockerfile
     container_name: cicd-dashboard-backend
     environment:
-      NODE_ENV: production
-      PORT: 5000
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cicd_dashboard
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-here
-      FRONTEND_URL: http://localhost:3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-5000}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-cicd_dashboard}?schema=public}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      # First-run seeding
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-ChangeMe123!}
+      - SEED_ON_START=${SEED_ON_START:-true}
+      # SMTP (use app password for Gmail)
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-CI/CD Alerts <alerts@example.com>}
+      - ALERTS_ENABLED=${ALERTS_ENABLED:-false}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
       - "5000:5000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - cicd-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "node", "healthcheck.js"]
       interval: 30s
       timeout: 10s
       retries: 3
+
 
   # Frontend Application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:5000}
+        VITE_ENABLE_ALERTS: ${VITE_ENABLE_ALERTS:-true}
     container_name: cicd-dashboard-frontend
     environment:
-      VITE_API_URL: http://localhost:5000/api/v1
-      VITE_WS_URL: ws://localhost:5000
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api/v1}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:5000}
+      VITE_ENABLE_ALERTS: ${VITE_ENABLE_ALERTS:-true}
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - cicd-network
 
@@ -104,4 +123,4 @@ volumes:
 
 networks:
   cicd-network:
-    driver: bridge 
+    driver: bridge

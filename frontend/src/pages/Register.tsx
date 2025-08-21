@@ -3,24 +3,25 @@ import { Box, Typography, TextField, Button, Paper, Stack } from '@mui/material'
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
 
 type FormValues = {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 };
 
 const schema = yup.object({
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().min(6, 'Min 6 characters').required('Password is required'),
 }).required();
 
-const Login: React.FC = () => {
-  const dispatch = useDispatch();
+const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: yupResolver(schema),
@@ -28,28 +29,37 @@ const Login: React.FC = () => {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      dispatch(loginStart());
-      const res = await api.post('/auth/login', data);
-      const { token, user } = res.data.data || res.data; // support either shape
-      if (!token || !user) {
-        throw new Error('Invalid response from server');
-      }
-      dispatch(loginSuccess({ user, token }));
-      toast.success('Logged in successfully');
-      navigate('/dashboard', { replace: true });
+      await api.post('/auth/register', data);
+      toast.success('Account created. Please sign in.');
+      navigate('/login', { replace: true });
     } catch (err: any) {
       console.error(err);
-      const msg = err?.response?.data?.error || 'Login failed';
+      const msg = err?.response?.data?.error || 'Registration failed';
       toast.error(msg);
-      dispatch(loginFailure());
     }
   };
 
   return (
     <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-      <Paper elevation={3} sx={{ p: 4, width: '100%', maxWidth: 420 }}>
+      <Paper elevation={3} sx={{ p: 4, width: '100%', maxWidth: 480 }}>
         <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)}>
-          <Typography variant="h5" textAlign="center">Sign in</Typography>
+          <Typography variant="h5" textAlign="center">Create an account</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="First name"
+              fullWidth
+              {...register('firstName')}
+              error={!!errors.firstName}
+              helperText={errors.firstName?.message}
+            />
+            <TextField
+              label="Last name"
+              fullWidth
+              {...register('lastName')}
+              error={!!errors.lastName}
+              helperText={errors.lastName?.message}
+            />
+          </Stack>
           <TextField
             label="Email"
             fullWidth
@@ -67,18 +77,12 @@ const Login: React.FC = () => {
             helperText={errors.password?.message}
           />
           <Button variant="contained" type="submit" disabled={isSubmitting} fullWidth>
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? 'Creating...' : 'Register'}
           </Button>
-          <Button variant="text" fullWidth onClick={() => navigate('/register')}>
-            Create an account
-          </Button>
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            API: {import.meta.env.VITE_API_URL || '/api/v1'}
-          </Typography>
         </Stack>
       </Paper>
     </Box>
   );
 };
 
-export default Login;
+export default Register;

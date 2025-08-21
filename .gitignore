@@ -104,7 +104,8 @@ Thumbs.db
 *.db
 
 # Prisma
-prisma/migrations/
+# Commit migrations so fresh clones have schema history.
+# If you need to ignore generated engines, do it in node_modules, not migrations.
 
 # Redis dump
 dump.rdb

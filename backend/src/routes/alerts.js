@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { prisma } = require('../database/connection');
+const { dispatchChannels, evaluateAndSendAlerts } = require('../services/alertService');
 const { protect, authorize } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 
@@ -8,6 +9,23 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(protect);
+
+// Resolve an organization ID for the current user. If the user has no organization,
+// fallback to a single-tenant default organization (create it if needed).
+async function resolveOrgId(req) {
+  if (req.user && req.user.organizationId) return req.user.organizationId;
+  // Try default slug first
+  let org = await prisma.organization.findFirst({ where: { slug: 'default' } });
+  if (!org) {
+    // Try any existing org
+    org = await prisma.organization.findFirst();
+  }
+  // Only create an org on explicit modifying requests, not on GET reads
+  if (!org && req.method !== 'GET') {
+    org = await prisma.organization.create({ data: { name: 'Default Org', slug: 'default', settings: {} } });
+  }
+  return org?.id;
+}
 
 /**
  * @swagger
@@ -43,9 +61,21 @@ router.get('/', async (req, res) => {
     const { page = 1, limit = 10, type, isActive } = req.query;
     const skip = (page - 1) * limit;
 
-    const where = {
-      organizationId: req.user.organizationId
-    };
+    const orgId = await resolveOrgId(req);
+    // If no organization exists yet, return empty dataset without creating one
+    if (!orgId) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: 0,
+          pages: 0
+        }
+      });
+    }
+    const where = { organizationId: orgId };
 
     if (type) {
       where.type = type;
@@ -148,6 +178,7 @@ router.post('/', [
     }
 
     const { name, type, conditions, channels } = req.body;
+    const orgId = await resolveOrgId(req);
 
     const alert = await prisma.alert.create({
       data: {
@@ -155,7 +186,7 @@ router.post('/', [
         type,
         conditions,
         channels,
-        organizationId: req.user.organizationId
+        organizationId: orgId
       },
       include: {
         organization: {
@@ -204,11 +235,12 @@ router.post('/', [
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const orgId = await resolveOrgId(req);
 
     const alert = await prisma.alert.findFirst({
       where: {
         id,
-        organizationId: req.user.organizationId
+        organizationId: orgId
       },
       include: {
         organization: {
@@ -282,7 +314,7 @@ router.put('/:id', [
   body('conditions').optional().isObject(),
   body('channels').optional().isObject(),
   body('isActive').optional().isBoolean()
-], authorize('ADMIN', 'USER'), async (req, res) => {
+], authorize('ADMIN', 'USER', 'VIEWER'), async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -296,10 +328,11 @@ router.put('/:id', [
     const { id } = req.params;
     const updateData = req.body;
 
+    const orgId = await resolveOrgId(req);
     const alert = await prisma.alert.findFirst({
       where: {
         id,
-        organizationId: req.user.organizationId
+        organizationId: orgId
       }
     });
 
@@ -355,14 +388,15 @@ router.put('/:id', [
  *       200:
  *         description: Alert deleted successfully
  */
-router.delete('/:id', authorize('ADMIN'), async (req, res) => {
+router.delete('/:id', authorize('ADMIN', 'USER', 'VIEWER'), async (req, res) => {
   try {
     const { id } = req.params;
+    const orgId = await resolveOrgId(req);
 
     const alert = await prisma.alert.findFirst({
       where: {
         id,
-        organizationId: req.user.organizationId
+        organizationId: orgId
       }
     });
 
@@ -372,6 +406,11 @@ router.delete('/:id', authorize('ADMIN'), async (req, res) => {
         error: 'Alert not found'
       });
     }
+
+    // First remove related history entries to satisfy FK constraints
+    await prisma.alertHistory.deleteMany({
+      where: { alertId: id }
+    });
 
     await prisma.alert.delete({
       where: { id }
@@ -424,9 +463,10 @@ router.get('/history', async (req, res) => {
     const { page = 1, limit = 10, alertId, status } = req.query;
     const skip = (page - 1) * limit;
 
+    const orgId = await resolveOrgId(req);
     const where = {
       alert: {
-        organizationId: req.user.organizationId
+        organizationId: orgId
       }
     };
 
@@ -488,4 +528,64 @@ router.get('/history', async (req, res) => {
   }
 });
 
-module.exports = router; 
+/**
+ * @swagger
+ * /alerts/test:
+ *   post:
+ *     summary: Send a test alert via provided channels
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               channels:
+ *                 type: object
+ *                 description: Channels payload, e.g. { email: { to: "a@b.com" }, slack: { webhookUrl: "..." } }
+ *               title:
+ *                 type: string
+ *               text:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Test alert sent
+ */
+router.post('/test', authorize('ADMIN', 'USER'), async (req, res) => {
+  try {
+    const { channels = {}, title = 'Test Alert', text = 'This is a test alert from CI/CD Dashboard' } = req.body || {};
+    const fakeAlert = { id: 'test', channels };
+    await dispatchChannels(fakeAlert, { title, text });
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Test alert error:', error);
+    res.status(500).json({ success: false, error: 'Failed to send test alert' });
+  }
+});
+
+/**
+ * @swagger
+ * /alerts/trigger:
+ *   post:
+ *     summary: Manually trigger alert evaluation
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Evaluation triggered
+ */
+router.post('/trigger', authorize('ADMIN'), async (req, res) => {
+  try {
+    await evaluateAndSendAlerts();
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Trigger alerts error:', error);
+    res.status(500).json({ success: false, error: 'Failed to trigger alerts' });
+  }
+});
+
+module.exports = router;
