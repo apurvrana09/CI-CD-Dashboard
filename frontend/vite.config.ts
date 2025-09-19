@@ -21,6 +21,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // Disable source maps to reduce memory usage
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000, // Increase chunk size warning limit
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['@mantine/core', '@mantine/hooks', '@mantine/notifications'],
+        },
+      },
+    },
   },
 }) 

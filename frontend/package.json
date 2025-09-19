@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "NODE_OPTIONS=--max-old-space-size=2048 tsc && NODE_OPTIONS=--max-old-space-size=2048 vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",

@@ -1,0 +1,33 @@
+# AWS Configuration
+aws_region = "us-east-1"  # Using Mumbai region for lower latency in India
+
+# Environment
+environment = "dev"
+project_name = "ci-cd-dashboard"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]  # Two public subnets in different AZs
+
+# EC2 Configuration
+instance_type = "t3.micro"  # Free tier eligible
+key_name = "your-key-pair-name"  # Create this in AWS Console > EC2 > Key Pairs
+
+# Database Configuration (leave empty for auto-generated password)
+db_name = "cicddashboard"
+db_username = "postgres"  # Default PostgreSQL username
+db_username = "postgres"
+# Uncomment and set a password or leave empty to generate a random one
+# db_password = "your-secure-password"
+
+db_instance_class = "db.t3.micro"
+
+# JWT Secret (leave empty to generate a random one)
+# jwt_secret = "your-jwt-secret"
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "ci-cd-dashboard"
+  ManagedBy   = "terraform"
+}

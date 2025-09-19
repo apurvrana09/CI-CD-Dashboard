@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with production flag to reduce memory usage
+RUN npm install --production=false --prefer-offline
 
 # Copy source code
 COPY . .
@@ -20,7 +20,8 @@ ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
 ENV VITE_ENABLE_ALERTS=${VITE_ENABLE_ALERTS}
 
-# Build the application
+# Set Node.js memory limit and build the application
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN npm run build
 
 # Production stage
