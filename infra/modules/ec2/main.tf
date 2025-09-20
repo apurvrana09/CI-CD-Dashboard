@@ -25,7 +25,8 @@ resource "aws_instance" "app" {
                   ca-certificates \
                   curl \
                   gnupg \
-                  lsb-release
+                  lsb-release \
+                  git
               
               # Add Docker's official GPG key
               install -m 0755 -d /etc/apt/keyrings
@@ -45,77 +46,37 @@ resource "aws_instance" "app" {
               # Add ubuntu user to docker group
               usermod -aG docker ubuntu
               
-              # Add ubuntu user to docker group
-              usermod -aG docker ubuntu
-              
-              # Create application directory
-              mkdir -p /opt/ci-cd-dashboard
-              
-              # Create application directory
-              mkdir -p /opt/ci-cd-dashboard
+              # Clone the repository
+              git clone https://github.com/your-username/ci-cd-dashboard.git /opt/ci-cd-dashboard
+              cd /opt/ci-cd-dashboard
               
               # Create .env file with database connection details
-              cat > /opt/ci-cd-dashboard/.env <<EOL
+              cat > /opt/ci-cd-dashboard/backend/.env <<EOL
               # Database Configuration
-              DATABASE_URL=postgresql://${var.db_username}:${var.db_password}@${var.db_endpoint}:5432/${var.db_name}?schema=public
+              DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cicd_dashboard?schema=public
               
               # Application Settings
               NODE_ENV=production
-              PORT=3000
+              PORT=5000
               JWT_SECRET=${var.jwt_secret}
               
+              # Redis
+              REDIS_URL=redis://redis:6379
+              
               # CORS
-              CORS_ORIGIN=*
+              FRONTEND_URL=http://localhost:3000
               
               # Logging
               LOG_LEVEL=info
               EOL
               
-              # Create docker-compose.yml
-              cat > /opt/ci-cd-dashboard/docker-compose.yml <<EOL
-              version: '3.8'
-              
-              services:
-                app:
-                  image: your-dockerhub-username/ci-cd-dashboard:latest
-                  container_name: ci-cd-dashboard
-                  restart: always
-                  ports:
-                    - "3000:3000"
-                  env_file:
-                    - .env
-                  depends_on:
-                    db:
-                      condition: service_healthy
-                  healthcheck:
-                    test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-                    interval: 30s
-                    timeout: 10s
-                    retries: 3
-                
-                db:
-                  image: postgres:13-alpine
-                  container_name: ci-cd-db
-                  restart: always
-                  environment:
-                    POSTGRES_USER: ${var.db_username}
-                    POSTGRES_PASSWORD: ${var.db_password}
-                    POSTGRES_DB: ${var.db_name}
-                  volumes:
-                    - postgres_data:/var/lib/postgresql/data
-                  healthcheck:
-                    test: ["CMD-SHELL", "pg_isready -U ${var.db_username} -d ${var.db_name}"]
-                    interval: 5s
-                    timeout: 5s
-                    retries: 5
-              
-              volumes:
-                postgres_data:
-              EOL
-              
-              # Start the application
+              # Start the application using docker-compose
               cd /opt/ci-cd-dashboard
               docker compose up -d
+              
+              # Enable Docker to start on boot
+              systemctl enable docker
+              systemctl start docker
               EOF
   
   tags = merge(

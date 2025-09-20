@@ -40,6 +40,15 @@ resource "aws_security_group" "ec2" {
     description = "Application access"
   }
   
+  # Allow PostgreSQL access for local Docker container
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "PostgreSQL access for local Docker container"
+  }
+  
   # Outbound internet access
   egress {
     from_port   = 0
@@ -52,29 +61,6 @@ resource "aws_security_group" "ec2" {
     var.tags,
     {
       Name = "${var.project_name}-${var.environment}-ec2-sg"
-    }
-  )
-}
-
-# Security group for RDS
-resource "aws_security_group" "rds" {
-  name        = "${var.project_name}-${var.environment}-rds-sg"
-  description = "Security group for RDS instances"
-  vpc_id      = var.vpc_id
-  
-  # Allow PostgreSQL access from EC2 instances
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
-    description     = "PostgreSQL access from EC2 instances"
-  }
-  
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-${var.environment}-rds-sg"
     }
   )
 }

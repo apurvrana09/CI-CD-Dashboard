@@ -25,28 +25,10 @@ output "ec2_public_dns" {
   value       = module.ec2.public_dns
 }
 
-# RDS Outputs
-output "rds_endpoint" {
-  description = "The connection endpoint for the RDS instance"
-  value       = module.rds.db_instance_endpoint
-  sensitive   = true
-}
-
-output "rds_database_name" {
-  description = "The name of the database"
-  value       = module.rds.db_instance_name
-  sensitive   = true
-}
-
 # Security Group Outputs
 output "ec2_security_group_id" {
   description = "The ID of the EC2 security group"
   value       = module.security_groups.ec2_security_group_id
-}
-
-output "rds_security_group_id" {
-  description = "The ID of the RDS security group"
-  value       = module.security_groups.rds_security_group_id
 }
 
 # Application URL

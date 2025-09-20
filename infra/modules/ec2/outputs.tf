@@ -18,6 +18,11 @@ output "private_ip" {
   value       = aws_instance.app.private_ip
 }
 
+output "application_url" {
+  description = "URL to access the application"
+  value       = "http://${aws_eip.app.public_dns}:3000"
+}
+
 output "instance_arn" {
   description = "The ARN of the EC2 instance"
   value       = aws_instance.app.arn

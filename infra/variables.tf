@@ -43,31 +43,6 @@ variable "key_name" {
   default     = "ci-cd-dashboard-key"
 }
 
-# RDS variables
-variable "db_name" {
-  description = "Name of the database"
-  type        = string
-  default     = "cicddashboard"
-}
-
-variable "db_username" {
-  description = "Database administrator username"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_password" {
-  description = "Database administrator password"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class"
-  type        = string
-  default     = "db.t3.micro"  # Free tier eligible
-}
-
 variable "jwt_secret" {
   description = "JWT secret key for authentication"
   type        = string
